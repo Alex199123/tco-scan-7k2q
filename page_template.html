@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Deal scanner — The TCG Outlet</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🃏</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF1F6; --surface:#FFFFFF; --ink:#152036; --muted:#5B6579; --line:#D3D9E3;
+  --buy:#0E7F57; --buy-bg:#E2F4EC; --ok:#9A6410; --ok-bg:#FBF0DC; --pass:#AE2435; --pass-bg:#FBE6E8;
+  --field:#F7F9FC; --focus:#2F6FEB;
+  --foil:linear-gradient(135deg,#8EDCF8 0%,#C7B0F7 35%,#F7D98A 70%,#9AF0C9 100%);
+  --font:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#0F1522; --surface:#18202F; --ink:#E9EDF5; --muted:#9AA4B8; --line:#2A3446;
+    --buy:#5FD3A1; --buy-bg:#123327; --ok:#F0BE6A; --ok-bg:#33280F; --pass:#F08592; --pass-bg:#3A1A20;
+    --field:#121a28; --focus:#7FA8FF;
+  }
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:860px;margin:0 auto;padding:20px 16px 64px}
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+h1{margin:0;font-size:2.4rem;line-height:1;font-weight:800;font-stretch:72%}
+.sub{margin:6px 0 0;color:var(--muted);font-size:.9rem}
+.sub.err{color:var(--pass);font-weight:600}
+.tally{display:flex;gap:18px}
+.tally div{text-align:right}
+.tally b{display:block;font-size:1.6rem;font-weight:800;font-stretch:72%;line-height:1}
+.tally span{font-size:.8rem;color:var(--muted)}
+.filters{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.filters .chips{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+@media (max-width:600px){.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.8rem;color:var(--muted);font-weight:500}
+label.f input,label.f select{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:9px 10px;font-size:1rem;color:var(--ink);width:100%;min-width:0}
+.chip{border:1px solid var(--line);background:var(--field);border-radius:999px;padding:6px 12px;font-size:.85rem;cursor:pointer;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.list{display:flex;flex-direction:column;gap:10px}
+.deal{display:grid;grid-template-columns:96px 1fr;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.grade{display:flex;flex-direction:column;justify-content:center;align-items:center;padding:12px 6px;text-align:center;border-right:1px solid var(--line);gap:8px}
+.grade .roi{font-size:1.9rem;font-weight:800;font-stretch:66%;line-height:1}
+.grade .word{font-size:.75rem;font-weight:700}
+.grade img{width:64px;height:88px;object-fit:cover;border-radius:4px;background:var(--field)}
+.v-strong .grade{background:var(--foil);color:#152036}
+.v-good .grade{background:var(--buy-bg);color:var(--buy)}
+.v-thin .grade{background:var(--ok-bg);color:var(--ok)}
+.v-pass .grade{background:var(--pass-bg);color:var(--pass)}
+.body{padding:12px 14px;min-width:0}
+.body h3{margin:0;font-size:1rem;font-weight:700;overflow-wrap:anywhere}
+.meta{color:var(--muted);font-size:.85rem;margin-top:2px}
+.nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+.nums div span{display:block;font-size:.75rem;color:var(--muted)}
+.nums div b{font-size:1rem;font-weight:700;font-variant-numeric:tabular-nums}
+.flags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.flag{font-size:.75rem;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--ok-bg);color:var(--ok)}
+.flag.hard{background:var(--pass-bg);color:var(--pass)}
+.actions{display:flex;gap:14px;margin-top:10px;font-size:.9rem;flex-wrap:wrap}
+.actions a,.actions button{background:none;border:0;padding:0;color:var(--focus);font-weight:700;cursor:pointer;text-decoration:none}
+.actions button{color:var(--muted);font-weight:600}
+details.calc{margin-top:8px;font-size:.85rem;color:var(--muted)}
+details.calc summary{cursor:pointer;font-weight:600}
+details.calc table{border-collapse:collapse;margin-top:6px;width:100%;max-width:360px}
+details.calc td{padding:2px 0;font-variant-numeric:tabular-nums}
+details.calc td:last-child{text-align:right;color:var(--ink)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:4px}
+.foot{margin-top:24px;font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Deal scanner</h1>
+      <p class="sub" id="status">Loading…</p>
+    </div>
+    <div class="tally">
+      <div><b id="tBuys">0</b><span>Good buys</span></div>
+      <div><b id="tBest">—</b><span>Best ROI</span></div>
+    </div>
+  </header>
+
+  <div class="filters">
+    <label class="f">Min price (£)<input id="fMin" type="number" inputmode="decimal" min="0" placeholder="0"></label>
+    <label class="f">Max price (£)<input id="fMax" type="number" inputmode="decimal" min="0" placeholder="Any"></label>
+    <label class="f">Min ROI (%)<input id="fRoi" type="number" inputmode="decimal" placeholder="Any"></label>
+    <label class="f">Sort by
+      <select id="fSort">
+        <option value="roi">ROI, highest first</option>
+        <option value="profit">Profit, highest first</option>
+        <option value="cost">Total cost, lowest first</option>
+        <option value="newest">Newest found</option>
+      </select>
+    </label>
+    <div class="chips" id="chips">
+      <button class="chip" data-v="strong" aria-pressed="true">Strong buy</button>
+      <button class="chip" data-v="good" aria-pressed="true">Good buy</button>
+      <button class="chip" data-v="thin" aria-pressed="false">Thin</button>
+      <button class="chip" data-x="en" aria-pressed="false">English only</button>
+      <button class="chip" data-x="hidden" aria-pressed="false">Show hidden</button>
+    </div>
+  </div>
+  <div class="list" id="list"></div>
+  <p class="foot" id="foot"></p>
+</div>
+
+<script>
+const DATA = /*__DATA__*/null;
+(function(){
+  const $ = s => document.querySelector(s);
+  const gbp = n => (n<0?'−':'') + '£' + Math.abs(n).toFixed(2);
+  const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const WORDS = {strong:'Strong buy', good:'Good buy', thin:'Thin', pass:'Pass'};
+  const HIDE_KEY = 'scanner-hidden';
+  let hidden = {};
+  try { hidden = JSON.parse(localStorage.getItem(HIDE_KEY) || '{}'); } catch(e) {}
+  const saveHidden = () => { try { localStorage.setItem(HIDE_KEY, JSON.stringify(hidden)); } catch(e) {} };
+
+  const filt = {min:null, max:null, roi:null, sort:'roi', v:{strong:true, good:true, thin:false, pass:false}, en:false, hidden:false};
+  const ago = t => { const m = Math.round((Date.now()/1000 - t)/60); return m < 60 ? m + ' min ago' : m < 1440 ? Math.round(m/60) + ' h ago' : Math.round(m/1440) + ' d ago'; };
+
+  if (!DATA) { $('#status').textContent = 'No scan has run yet. Check the Actions tab on GitHub.'; return; }
+  const last = DATA.lastScan ? new Date(DATA.lastScan) : null;
+  const lastLog = (DATA.log || [])[0];
+  if (lastLog && lastLog.error) { $('#status').textContent = 'Last scan hit a problem: ' + lastLog.error; $('#status').classList.add('err'); }
+  else $('#status').textContent = last ? 'Last scan ' + last.toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'}) + '. Refresh the page for newer results.' : '';
+  if (lastLog) $('#foot').textContent = `Last scan checked ${lastLog.scanned} new listings, identified ${lastLog.identified}, priced ${lastLog.priced} and found ${lastLog.new_deals} new deals. Market value is the median price of other eBay UK listings of the same card, so always sense-check against PulseTCG before buying.`;
+
+  function render(){
+    const all = DATA.deals.filter(d => filt.hidden || !hidden[d.id]);
+    const buys = all.filter(d => d.verdict === 'strong' || d.verdict === 'good');
+    $('#tBuys').textContent = buys.length;
+    $('#tBest').textContent = all.length ? Math.round(Math.max(...all.map(d => d.roi))) + '%' : '—';
+    let shown = all.filter(d => filt.v[d.verdict]
+      && (filt.min === null || d.cost >= filt.min)
+      && (filt.max === null || d.cost <= filt.max)
+      && (filt.roi === null || d.roi >= filt.roi)
+      && (!filt.en || d.lang === 'EN'));
+    const sorters = {roi:(a,b)=>b.roi-a.roi, profit:(a,b)=>b.profit-a.profit, cost:(a,b)=>a.cost-b.cost, newest:(a,b)=>b.found-a.found};
+    shown.sort(sorters[filt.sort]);
+    if (!DATA.deals.length) { $('#list').innerHTML = '<div class="empty"><b>No deals found yet</b>The scanner checks new listings every 30 minutes and adds anything worth buying here.</div>'; return; }
+    if (!shown.length) { $('#list').innerHTML = '<div class="empty"><b>Nothing matches these filters</b>Widen the price range, lower the minimum ROI, or turn on Thin deals.</div>'; return; }
+    $('#list').innerHTML = shown.map(d => `
+      <article class="deal v-${d.verdict}">
+        <div class="grade">
+          ${d.img ? `<img src="${esc(d.img)}" alt="" loading="lazy">` : ''}
+          <div class="roi">${Math.round(d.roi)}%</div><div class="word">${WORDS[d.verdict]}</div>
+        </div>
+        <div class="body">
+          <h3>${esc(d.title)}</h3>
+          <div class="meta">Card ${esc(d.card)}, ${esc(d.cond)}, seller feedback ${esc(d.fbPct)}% (${esc(d.fbScore)}), found ${ago(d.found)}</div>
+          <div class="nums">
+            <div><span>You pay</span><b>${gbp(d.cost)}</b></div>
+            <div><span>Market</span><b>${gbp(d.market)}</b></div>
+            <div><span>Profit</span><b>${gbp(d.profit)}</b></div>
+          </div>
+          ${d.flags.length ? '<div class="flags">' + d.flags.map(f => `<span class="flag ${/genuine/.test(f)?'hard':''}">${esc(f)}</span>`).join('') + '</div>' : ''}
+          <details class="calc"><summary>How this was worked out</summary>
+            <table>
+              <tr><td>Market value (median of ${d.comps} listings, ${gbp(d.compLow)} to ${gbp(d.compHigh)})</td><td>${gbp(d.market)}</td></tr>
+              <tr><td>Resale value${d.condPct!==100?' at '+d.condPct+'% for '+esc(d.cond):''}</td><td>${gbp(d.sale)}</td></tr>
+              <tr><td>Selling fees</td><td>${gbp(-d.fees)}</td></tr>
+              <tr><td>Your postage out</td><td>${gbp(-d.outPost)}</td></tr>
+              <tr><td>Packaging</td><td>${gbp(-d.pack)}</td></tr>
+              <tr><td>Price ${gbp(d.price)} + postage ${gbp(d.post)}</td><td>${gbp(-d.cost)}</td></tr>
+              <tr><td><b>Profit</b></td><td><b>${gbp(d.profit)}</b></td></tr>
+            </table>
+          </details>
+          <div class="actions">
+            <a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">Open on eBay</a>
+            <button data-hide="${esc(d.id)}">${hidden[d.id] ? 'Unhide' : 'Hide'}</button>
+          </div>
+        </div>
+      </article>`).join('');
+  }
+
+  const fv = el => el.value === '' || isNaN(parseFloat(el.value)) ? null : parseFloat(el.value);
+  ['#fMin','#fMax','#fRoi'].forEach(s => $(s).addEventListener('input', () => { filt.min = fv($('#fMin')); filt.max = fv($('#fMax')); filt.roi = fv($('#fRoi')); render(); }));
+  $('#fSort').addEventListener('change', e => { filt.sort = e.target.value; render(); });
+  document.querySelectorAll('#chips .chip').forEach(c => c.addEventListener('click', () => {
+    const on = c.getAttribute('aria-pressed') !== 'true'; c.setAttribute('aria-pressed', on);
+    if (c.dataset.v) filt.v[c.dataset.v] = on; else filt[c.dataset.x] = on;
+    render();
+  }));
+  $('#list').addEventListener('click', e => {
+    const b = e.target.closest('[data-hide]'); if (!b) return;
+    const id = b.dataset.hide; if (hidden[id]) delete hidden[id]; else hidden[id] = 1;
+    saveHidden(); render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

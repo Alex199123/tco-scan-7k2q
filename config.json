@@ -1,0 +1,30 @@
+{
+  "price_min": 5,
+  "price_max": 300,
+
+  "sell_pct": 100,
+  "fee_pct": 12.8,
+  "fee_fixed": 0.30,
+  "post_low": 0.85,
+  "post_high": 3.20,
+  "track_from": 20,
+  "pack": 0.25,
+
+  "cond_pct": { "NM": 100, "LP": 85, "MP": 70, "HP": 50, "DMG": 30 },
+
+  "strong_roi": 50,
+  "good_roi": 25,
+  "min_profit": 2,
+  "fake_below_pct": 45,
+  "show_min_roi": 10,
+
+  "min_comps": 5,
+  "min_seller_feedback_pct": 97,
+  "min_seller_feedback_score": 5,
+
+  "pages_per_scan": 2,
+  "max_comp_lookups_per_scan": 50,
+  "max_rechecks_per_scan": 15,
+  "comp_cache_hours": 12,
+  "keep_deals_hours": 72
+}
