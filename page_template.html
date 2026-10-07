@@ -75,6 +75,11 @@ details.calc td:last-child{text-align:right;color:var(--ink)}
 .empty{background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:28px 20px;text-align:center;color:var(--muted)}
 .empty b{display:block;color:var(--ink);font-size:1.1rem;margin-bottom:4px}
 .foot{margin-top:24px;font-size:.8rem;color:var(--muted)}
+.runbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:-4px 0 16px}
+.runbtn{border:0;background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:9px;font-weight:700;cursor:pointer}
+.runbtn:disabled{opacity:.6;cursor:default}
+.linkbtn{background:none;border:0;padding:0;color:var(--focus);font-weight:600;cursor:pointer;font-size:.85rem}
+.runmsg{font-size:.85rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -89,6 +94,12 @@ details.calc td:last-child{text-align:right;color:var(--ink)}
       <div><b id="tBest">—</b><span>Best ROI</span></div>
     </div>
   </header>
+
+  <div class="runbar">
+    <button class="runbtn" id="runBtn" type="button">Run scan now</button>
+    <span class="runmsg" id="runMsg"></span>
+    <button class="linkbtn" id="tokenBtn" type="button"></button>
+  </div>
 
   <div class="filters">
     <label class="f">Min price (£)<input id="fMin" type="number" inputmode="decimal" min="0" placeholder="0"></label>
@@ -198,6 +209,44 @@ const DATA = /*__DATA__*/null;
     saveHidden(); render();
   });
   render();
+})();
+</script>
+<script>
+(function(){
+  const TOKEN_KEY = 'scanner-gh-token';
+  const host = location.hostname, seg = location.pathname.split('/').filter(Boolean)[0];
+  const owner = host.endsWith('.github.io') ? host.split('.')[0] : null;
+  const repo = seg || (owner ? owner + '.github.io' : null);
+  const workflowPage = owner ? `https://github.com/${owner}/${repo}/actions/workflows/scan.yml` : null;
+  const btn = document.getElementById('runBtn'), msg = document.getElementById('runMsg'), tok = document.getElementById('tokenBtn');
+  const getToken = () => { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch(e) { return ''; } };
+  const setToken = v => { try { v ? localStorage.setItem(TOKEN_KEY, v) : localStorage.removeItem(TOKEN_KEY); } catch(e) {} };
+  function label(){ tok.textContent = getToken() ? 'Remove one-tap key' : 'Set up one-tap runs'; }
+  label();
+
+  btn.addEventListener('click', async () => {
+    const token = getToken();
+    if (!owner) { msg.textContent = 'Open this page from its github.io address to use this button.'; return; }
+    if (!token) { window.open(workflowPage, '_blank', 'noopener'); msg.textContent = 'Tap "Run workflow" on the GitHub page that opened.'; return; }
+    btn.disabled = true; msg.textContent = 'Starting scan…';
+    try {
+      const r = await fetch(`https://api.github.com/repos/${owner}/${repo}/actions/workflows/scan.yml/dispatches`, {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' },
+        body: JSON.stringify({ ref: 'main' })
+      });
+      if (r.status === 204) msg.textContent = 'Scan started. Refresh this page in about 3 minutes.';
+      else if (r.status === 401 || r.status === 403 || r.status === 404) msg.textContent = 'GitHub refused the key. It may have expired or be missing the Actions permission.';
+      else msg.textContent = 'Could not start the scan (GitHub said ' + r.status + ').';
+    } catch(e) { msg.textContent = 'Could not reach GitHub. Check your connection.'; }
+    setTimeout(() => { btn.disabled = false; }, 60000);
+  });
+
+  tok.addEventListener('click', () => {
+    if (getToken()) { setToken(''); label(); msg.textContent = 'Key removed from this phone.'; return; }
+    const v = prompt('Paste your GitHub fine-grained token (Actions: read and write, this repository only). It is saved on this device only.');
+    if (v && v.trim()) { setToken(v.trim()); label(); msg.textContent = 'Saved. The button now starts scans directly.'; }
+  });
 })();
 </script>
 </body>
