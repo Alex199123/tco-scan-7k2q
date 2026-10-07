@@ -134,7 +134,7 @@ const DATA = /*__DATA__*/null;
   const lastLog = (DATA.log || [])[0];
   if (lastLog && lastLog.error) { $('#status').textContent = 'Last scan hit a problem: ' + lastLog.error; $('#status').classList.add('err'); }
   else $('#status').textContent = last ? 'Last scan ' + last.toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'}) + '. Refresh the page for newer results.' : '';
-  if (lastLog) $('#foot').textContent = `Last scan checked ${lastLog.scanned} new listings, identified ${lastLog.identified}, priced ${lastLog.priced} and found ${lastLog.new_deals} new deals. Market value is the median price of other eBay UK listings of the same card, so always sense-check against PulseTCG before buying.`;
+  if (lastLog) $('#foot').textContent = `Last scan checked ${lastLog.scanned} new listings, identified ${lastLog.identified}, priced ${lastLog.priced} and found ${lastLog.new_deals} new deals. Market value is the lower end of other eBay UK listings of the same card, matched on name, number and variant, so always sense-check against PulseTCG before buying.`;
 
   function render(){
     const all = DATA.deals.filter(d => filt.hidden || !hidden[d.id]);
@@ -167,7 +167,7 @@ const DATA = /*__DATA__*/null;
           ${d.flags.length ? '<div class="flags">' + d.flags.map(f => `<span class="flag ${/genuine/.test(f)?'hard':''}">${esc(f)}</span>`).join('') + '</div>' : ''}
           <details class="calc"><summary>How this was worked out</summary>
             <table>
-              <tr><td>Market value (median of ${d.comps} listings, ${gbp(d.compLow)} to ${gbp(d.compHigh)})</td><td>${gbp(d.market)}</td></tr>
+              <tr><td>Market value (lower end of ${d.comps} matching listings, ${gbp(d.compLow)} to ${gbp(d.compHigh)})</td><td>${gbp(d.market)}</td></tr>
               <tr><td>Resale value${d.condPct!==100?' at '+d.condPct+'% for '+esc(d.cond):''}</td><td>${gbp(d.sale)}</td></tr>
               <tr><td>Selling fees</td><td>${gbp(-d.fees)}</td></tr>
               <tr><td>Your postage out</td><td>${gbp(-d.outPost)}</td></tr>
