@@ -104,6 +104,69 @@ def usable(title):
     return not SKIP_WORDS.search(title)
 
 
+
+# ---------------------------------------------------------------- names and variants
+
+STATE_VERSION = 2
+NAMES_URL = "https://pokeapi.co/api/v2/pokemon-species?limit=2000"
+STOPWORDS = set("""pokemon pokémon tcg card cards holo holofoil rare ultra secret special illustration
+full art alt alternate ex gx v vmax vstar mega tera radiant shiny english eng uk nm mint near
+pack fresh new sir sar ir ur ar chr tg gg the and with of a in for from set promo trainer gallery
+gold rainbow hyper character""".split())
+VARIANTS = [
+    ("REV", re.compile(r"\b(reverse holo|reverse|rev holo|rh)\b", re.I)),
+    ("1ST", re.compile(r"\b(1st edition|1st ed|first edition|1st)\b", re.I)),
+    ("SHADOWLESS", re.compile(r"\bshadowless\b", re.I)),
+    ("STAMP", re.compile(r"\b(stamped|stamp|prerelease|pre-release|staff|league|cosmos holo|cosmos)\b", re.I)),
+]
+
+
+def norm(text):
+    t = text.lower().replace("é", "e").replace("♀", " f").replace("♂", " m")
+    t = re.sub(r"['’.:]", "", t)
+    t = re.sub(r"[^a-z0-9]+", " ", t)
+    return " " + t.strip() + " "
+
+
+def load_names(state):
+    cached = state.get("names")
+    if cached and time.time() - cached.get("ts", 0) < 30 * 86400:
+        return set(cached["list"])
+    try:
+        req = urllib.request.Request(NAMES_URL, headers={"User-Agent": "tcg-outlet-scanner"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read())
+        names = sorted({norm(x["name"].replace("-", " ")).strip() for x in data.get("results", [])})
+        if len(names) > 800:
+            state["names"] = {"ts": time.time(), "list": names}
+            return set(names)
+    except Exception:
+        pass
+    return set(cached["list"]) if cached else set()
+
+
+def pokemon_in(title, names):
+    t = norm(title)
+    return {n for n in names if f" {n} " in t}
+
+
+def key_words(title):
+    words = set(norm(title).split())
+    return {w for w in words if len(w) >= 4 and not w.isdigit() and w not in STOPWORDS}
+
+
+def variant(title):
+    return "+".join(code for code, rx in VARIANTS if rx.search(title)) or "STD"
+
+
+def same_card(listing_title, comp_title, names):
+    """Number already matches; this checks it's the same Pokemon (or trainer card)."""
+    mine = pokemon_in(listing_title, names)
+    if mine:
+        return bool(mine & pokemon_in(comp_title, names))
+    return bool(key_words(listing_title) & key_words(comp_title))
+
+
 # ---------------------------------------------------------------- eBay API
 
 class Ebay:
@@ -204,8 +267,9 @@ def score(ask, post_in, market, cond):
 
 # ---------------------------------------------------------------- comparables
 
-def lookup_comps(ebay, key, search_text, lang, exclude_ids, exclude_seller):
-    q = f"pokemon {search_text}"
+def lookup_comps(ebay, key, search_text, lang, var, listing_title, names, exclude_ids, exclude_seller):
+    mine = sorted(pokemon_in(listing_title, names), key=len, reverse=True)
+    q = f"pokemon {mine[0] if mine else ''} {search_text}".replace("  ", " ")
     if lang == "JP":
         q += " japanese"
     items = ebay.search(q, 0.5, 5000, limit=100, sort=None)
@@ -216,24 +280,25 @@ def lookup_comps(ebay, key, search_text, lang, exclude_ids, exclude_seller):
             continue
         if (it.get("seller") or {}).get("username") == exclude_seller:
             continue
-        if not usable(title) or language(title) != lang:
+        if not usable(title) or language(title) != lang or variant(title) != var:
             continue
-        if card_key(title)[0] != key:
+        if card_key(title)[0] != key or not same_card(listing_title, title, names):
             continue
         if condition(title) not in ("NM", "LP"):
             continue
-        p, s = total_price(it)
+        p, sh = total_price(it)
         if p > 0:
-            prices.append(p + s)
+            prices.append(p + sh)
     if len(prices) < CONFIG["min_comps"]:
         return {"n": len(prices), "median": None}
     prices.sort()
-    # Trim the top and bottom 10% so one silly price can't move the market value much.
+    # Trim the top and bottom 10%, then take the lower quartile so values lean cautious.
     cut = len(prices) // 10
     core = prices[cut:len(prices) - cut] if cut else prices
+    value = statistics.quantiles(core, n=4, method="inclusive")[0] if len(core) >= 4 else statistics.median(core)
     return {
         "n": len(prices),
-        "median": round(statistics.median(core), 2),
+        "median": round(value, 2),
         "low": round(prices[0], 2),
         "high": round(prices[-1], 2),
     }
@@ -247,7 +312,7 @@ def load_state():
             return json.loads(STATE_FILE.read_text())
         except json.JSONDecodeError:
             pass
-    return {"seen": {}, "comps": {}, "deals": {}, "lastScan": None, "log": []}
+    return {"seen": {}, "comps": {}, "deals": {}, "lastScan": None, "log": [], "version": STATE_VERSION}
 
 
 def run():
@@ -257,6 +322,9 @@ def run():
     c = CONFIG
     now = time.time()
     state = load_state()
+    if state.get("version") != STATE_VERSION:
+        state.update({"seen": {}, "comps": {}, "deals": {}, "version": STATE_VERSION})
+    names = load_names(state)
     ebay = Ebay(cid, secret)
     ebay.auth()
     stats = {"scanned": 0, "identified": 0, "priced": 0, "new_deals": 0, "error": None}
@@ -301,13 +369,15 @@ def run():
                 continue
             stats["identified"] += 1
             lang = language(title)
-            cache_key = f"{lang}|{key}"
+            var = variant(title)
+            mine = sorted(pokemon_in(title, names)) or sorted(key_words(title))[:3]
+            cache_key = f"{lang}|{key}|{var}|{'+'.join(mine)}"
             comps = state["comps"].get(cache_key)
             if comps is None:
                 if comp_lookups >= c["max_comp_lookups_per_scan"]:
                     continue  # not marked seen, so it's picked up next scan
                 comp_lookups += 1
-                comps = lookup_comps(ebay, key, search_text, lang, {item_id}, seller.get("username"))
+                comps = lookup_comps(ebay, key, search_text, lang, var, title, names, {item_id}, seller.get("username"))
                 comps["ts"] = now
                 state["comps"][cache_key] = comps
             state["seen"][item_id] = now
@@ -326,6 +396,8 @@ def run():
                 flags.append(f"Title suggests {cond}")
             if lang != "EN":
                 flags.append(f"{lang} language card")
+            if var != "STD":
+                flags.append("Variant: " + var.replace("REV", "reverse holo").replace("1ST", "1st Edition").replace("SHADOWLESS", "shadowless").replace("STAMP", "stamped/promo").replace("+", ", "))
             state["deals"][item_id] = {
                 "id": item_id, "title": title, "url": it.get("itemWebUrl"),
                 "img": (it.get("image") or {}).get("imageUrl"),
